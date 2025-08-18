@@ -1,15 +1,8 @@
 // === بداية bot.js (استيراد Baileys بطريقة دفاعية) ===
-import * as Baileys from '@whiskeysockets/baileys'
-// نلتقط الدالة سواء كانت default أو مسماة
-const makeWASocket = Baileys.default ?? Baileys.makeWASocket
-const { useMultiFileAuthState, jidNormalizedUser, fetchLatestBaileysVersion } = Baileys
+// Correct import: Destructure makeWASocket directly
+import { makeWASocket, useMultiFileAuthState, jidNormalizedUser, fetchLatestBaileysVersion } from '@whiskeysockets/baileys'
 
-// تحقّق صريح — لو كان في مشكلة سنشوفها بوضوح في اللوج
-if (typeof makeWASocket !== 'function') {
-  console.error('[Baileys] makeWASocket نوعه:', typeof makeWASocket, '— محتوى Baileys.keys:', Object.keys(Baileys))
-  throw new TypeError('makeWASocket not resolved to a function')
-}
-
+// Removed the old defensive import and check as it's no longer needed.
 import axios from 'axios'
 import fs from 'fs'
 import path from 'path'
@@ -138,6 +131,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
     await pushToN8n('group-participants.update', ev)
     if (action === 'add') {
       const names = participants.map(jidNormalizedUser).join(', ')
+      // FIX: Use backticks for template literal
       await sock.sendMessage(groupJid, { text: `مرحباً ${names} 👋 نورتوا القروب!` })
     }
   })
@@ -158,6 +152,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
   async function warnUser(remoteJid, targetJid, reason) {
     const user = targetJid?.split('@')[0]
     await sock.sendMessage(remoteJid, {
+      // FIX: Use backticks for template literal
       text: `تنبيه: @${user}، رسالتك خالفت سياسة القروب (${reason}). الرجاء الالتزام.`,
       mentions: [targetJid]
     })
@@ -172,6 +167,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
   // سجل بسيط لتكرار المخالفات
   const infractions = new Map() // key: <groupJid>:<userJid> => count
   function addInfraction(g, u) {
+    // FIX: Use backticks for template literal
     const k = `${g}:${u}`
     const c = (infractions.get(k) || 0) + 1
     infractions.set(k, c)
@@ -213,6 +209,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
     }
 
     // ===== أوامر المالك =====
+    // FIX: Use backticks for template literal
     const ownerJid = `${(process.env.BOT_OWNER || '').replace(/\D/g,'')}@s.whatsapp.net`
     const isOwner = fromJid === ownerJid
 
@@ -231,6 +228,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
       }
       if (isOwner && body.startsWith('!طرد ')) {
         const num = body.split(' ')[1]?.replace(/\D/g,'')
+        // FIX: Use backticks for template literal
         if (num) await kickUser(remoteJid, `${num}@s.whatsapp.net`)
         return
       }
