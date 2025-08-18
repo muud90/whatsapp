@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: whatsapp-bot
+    env: node
+    plan: free
+    region: frankfurt
+    buildCommand: "npm install"
+    startCommand: "npm start"
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: SELF_URL
+        value: "https://YOUR-RENDER-URL.onrender.com"
+      - key: KEEPALIVE_MINUTES
+        value: "10"
+      - key: N8N_WEBHOOK_URL
+        value: ""
+      - key: N8N_SECRET
+        generateValue: true
+      - key: BOT_OWNER
+        value: "9665XXXXXXXX"
+      - key: UPSTASH_REDIS_REST_URL
+        value: "https://YOUR-UPSTASH-URL"
+      - key: UPSTASH_REDIS_REST_TOKEN
+        value: "YOUR-UPSTASH-TOKEN"
+      - key: REDIS_NAMESPACE
+        value: "wauth:default"
