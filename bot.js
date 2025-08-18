@@ -1,14 +1,9 @@
-// === bot.js (نسخة مصحّحة) ===
-// ملاحظة: package.json لديه "type": "module" لذلك نستخدم import
-
-// ✅ استيراد Baileys بطريقة مضمونة
-import * as baileys from '@whiskeysockets/baileys'
-const {
-  default: makeWASocket,
+// === بداية bot.js (الصحيحة) ===
+import makeWASocket, {
   useMultiFileAuthState,
   jidNormalizedUser,
   fetchLatestBaileysVersion
-} = baileys
+} from '@whiskeysockets/baileys'
 
 import axios from 'axios'
 import fs from 'fs'
