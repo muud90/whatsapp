@@ -138,7 +138,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
     await pushToN8n('group-participants.update', ev)
     if (action === 'add') {
       const names = participants.map(jidNormalizedUser).join(', ')
-      await sock.sendMessage(groupJid, { text: مرحبًا ${names} 👋 نورتوا القروب! })
+      await sock.sendMessage(groupJid, { text: `مرحباً ${names} 👋 نورتوا القروب!` })
     }
   })
 
@@ -158,7 +158,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
   async function warnUser(remoteJid, targetJid, reason) {
     const user = targetJid?.split('@')[0]
     await sock.sendMessage(remoteJid, {
-      text: تنبيه: @${user}، رسالتك خالفت سياسة القروب (${reason}). الرجاء الالتزام.,
+      text: `تنبيه: @${user}، رسالتك خالفت سياسة القروب (${reason}). الرجاء الالتزام.`,
       mentions: [targetJid]
     })
   }
@@ -172,7 +172,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
   // سجل بسيط لتكرار المخالفات
   const infractions = new Map() // key: <groupJid>:<userJid> => count
   function addInfraction(g, u) {
-    const k = ${g}:${u}
+    const k = `${g}:${u}`
     const c = (infractions.get(k) || 0) + 1
     infractions.set(k, c)
     return c
@@ -182,7 +182,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
   const FAQ = [
     { q: /ساعات (العمل|الدوام)/, a: 'ساعات العمل: 9ص–5م من الأحد إلى الخميس.' },
     { q: /(التواصل|الدعم)/, a: 'للتواصل الإداري: أرسل كلمة "دعم" في الخاص، أو تواصل مع المشرف.' },
-    { q: /(القواعد|الضوابط)/, a: 'القواعد: ممنوع الروابط المريبة، ممنوع التسويق الذاتي، ممنوع الإساءة. المخالف يُحذَّر ثم يُطرد.' }
+    { q: /(القواعد|الضوابط)/, a: 'القواعد: ممنوع الروابط المريبة، ممنوع التسويق الذاتي، ممنوع الإساءة. المخالف يُحذَّر ثم يُطرد.' }
   ]
 
   sock.ev.on('messages.upsert', async ({ messages }) => {
@@ -213,7 +213,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
     }
 
     // ===== أوامر المالك =====
-    const ownerJid = ${(process.env.BOT_OWNER || '').replace(/\D/g,'')}@s.whatsapp.net
+    const ownerJid = `${(process.env.BOT_OWNER || '').replace(/\D/g,'')}@s.whatsapp.net`
     const isOwner = fromJid === ownerJid
 
     if (isGroup) {
@@ -231,7 +231,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
       }
       if (isOwner && body.startsWith('!طرد ')) {
         const num = body.split(' ')[1]?.replace(/\D/g,'')
-        if (num) await kickUser(remoteJid, ${num}@s.whatsapp.net)
+        if (num) await kickUser(remoteJid, `${num}@s.whatsapp.net`)
         return
       }
 
