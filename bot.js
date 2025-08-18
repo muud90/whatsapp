@@ -1,13 +1,21 @@
-import makeWASocket, {
+// === bot.js (نسخة مصحّحة) ===
+// ملاحظة: package.json لديه "type": "module" لذلك نستخدم import
+
+// ✅ استيراد Baileys بطريقة مضمونة
+import * as baileys from '@whiskeysockets/baileys'
+const {
+  default: makeWASocket,
   useMultiFileAuthState,
   jidNormalizedUser,
   fetchLatestBaileysVersion
-} from '@whiskeysockets/baileys'
+} = baileys
+
 import axios from 'axios'
 import fs from 'fs'
 import path from 'path'
 import { Redis } from '@upstash/redis'
 
+// ===== إعداد التخزين في Redis لملفات الجلسة =====
 const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
   ? new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL,
@@ -22,21 +30,21 @@ if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true })
 async function saveAuthToRedis() {
   if (!redis) return
   const files = fs.readdirSync(authDir)
-  await redis.set(`${NS}:files`, files)
+  await redis.set(${NS}:files, files)
   for (const f of files) {
     const full = path.join(authDir, f)
     const buf = fs.readFileSync(full)
-    await redis.set(`${NS}:file:${f}`, buf.toString('base64'))
+    await redis.set(${NS}:file:${f}, buf.toString('base64'))
   }
 }
 
 async function loadAuthFromRedis() {
   if (!redis) return
   try {
-    const files = await redis.get(`${NS}:files`)
+    const files = await redis.get(${NS}:files)
     if (!files || !Array.isArray(files) || !files.length) return
     for (const f of files) {
-      const b64 = await redis.get(`${NS}:file:${f}`)
+      const b64 = await redis.get(${NS}:file:${f})
       if (!b64) continue
       const full = path.join(authDir, f)
       fs.writeFileSync(full, Buffer.from(b64, 'base64'))
@@ -46,11 +54,14 @@ async function loadAuthFromRedis() {
     console.warn('[Auth] Redis restore skipped:', e.message)
   }
 }
+// عند بدء التشغيل: حاول استعادة الجلسة
 await loadAuthFromRedis()
 
+// ===== مساعدات عامة =====
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 const isArabic = (s) => /[\u0600-\u06FF]/.test(s || '')
 
+// ===== إعداد السياسات (فلترة/إدارة) =====
 const ALLOWED_LINKS = [
   'whatsapp.com', 'youtube.com', 'youtu.be', 'facebook.com', 'instagram.com', 'twitter.com', 'x.com'
 ]
@@ -61,6 +72,7 @@ const SELF_PROMO_PATTERNS = [
   /تابع\s?ني/i, /ضيف\s?ني/i, /تواصل\s?خاص/i, /بيع\s?متابعين/i, /ربح\s?سريع/i
 ]
 
+// روابط مريبة = أي http/https ليس ضمن القائمة البيضاء
 function isSuspiciousLink(text) {
   const urls = [...(text.match(/https?:\/\/[^\s]+/gi) || [])]
   if (!urls.length) return false
@@ -79,6 +91,7 @@ function hasSelfPromo(text) {
   return SELF_PROMO_PATTERNS.some(rx => rx.test(text))
 }
 
+// ===== التفاعل مع القروبات =====
 async function isAdmin(sock, groupJid, participantJid) {
   const md = await sock.groupMetadata(groupJid)
   const me = md.participants.find(p => p.id === participantJid)
@@ -106,21 +119,24 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
     await saveAuthToRedis().catch(()=>{})
   })
 
+  // دفع للأتمتة (n8n) إذا محدد
   const pushToN8n = async (kind, payload) => {
     if (!n8nWebhookUrl) return
     try { await axios.post(n8nWebhookUrl, { kind, payload, n8nSecret }) }
     catch (e) { console.error('n8n push error:', e?.response?.data || e.message) }
   }
 
+  // ترحيب بالمنضمين الجدد
   sock.ev.on('group-participants.update', async (ev) => {
     const { id: groupJid, action, participants } = ev
     await pushToN8n('group-participants.update', ev)
     if (action === 'add') {
       const names = participants.map(jidNormalizedUser).join(', ')
-      await sock.sendMessage(groupJid, { text: `مرحبًا ${names} 👋 نورتوا القروب!` })
+      await sock.sendMessage(groupJid, { text: مرحبًا ${names} 👋 نورتوا القروب! })
     }
   })
 
+  // حذف رسالة (إذا البوت مشرف)
   async function deleteForEveryone(m) {
     try {
       if (!(await isBotAdmin(sock, m.key.remoteJid))) return false
@@ -132,27 +148,31 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
     }
   }
 
+  // تحذير المستخدم
   async function warnUser(remoteJid, targetJid, reason) {
     const user = targetJid?.split('@')[0]
     await sock.sendMessage(remoteJid, {
-      text: `تنبيه: @${user}، رسالتك خالفت سياسة القروب (${reason}). الرجاء الالتزام.`,
+      text: تنبيه: @${user}، رسالتك خالفت سياسة القروب (${reason}). الرجاء الالتزام.,
       mentions: [targetJid]
     })
   }
 
+  // طرد المستخدم (يتطلب أن يكون رقمك/البوت مشرفًا)
   async function kickUser(remoteJid, targetJid) {
     try { await sock.groupParticipantsUpdate(remoteJid, [targetJid], 'remove') }
     catch (e) { console.warn('Kick failed:', e.message) }
   }
 
-  const infractions = new Map()
+  // سجل بسيط لتكرار المخالفات
+  const infractions = new Map() // key: <groupJid>:<userJid> => count
   function addInfraction(g, u) {
-    const k = `${g}:${u}`
+    const k = ${g}:${u}
     const c = (infractions.get(k) || 0) + 1
     infractions.set(k, c)
     return c
   }
 
+  // ردود الاستفسارات (FAQ)
   const FAQ = [
     { q: /ساعات (العمل|الدوام)/, a: 'ساعات العمل: 9ص–5م من الأحد إلى الخميس.' },
     { q: /(التواصل|الدعم)/, a: 'للتواصل الإداري: أرسل كلمة "دعم" في الخاص، أو تواصل مع المشرف.' },
@@ -176,6 +196,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
       remoteJid, from: fromJid, text, isGroup
     })
 
+    // ===== FAQ =====
     if (text) {
       for (const item of FAQ) {
         if (item.q.test(text)) {
@@ -185,7 +206,8 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
       }
     }
 
-    const ownerJid = `${(process.env.BOT_OWNER || '').replace(/\D/g,'')}@s.whatsapp.net`
+    // ===== أوامر المالك =====
+    const ownerJid = ${(process.env.BOT_OWNER || '').replace(/\D/g,'')}@s.whatsapp.net
     const isOwner = fromJid === ownerJid
 
     if (isGroup) {
@@ -203,10 +225,11 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
       }
       if (isOwner && body.startsWith('!طرد ')) {
         const num = body.split(' ')[1]?.replace(/\D/g,'')
-        if (num) await kickUser(remoteJid, `${num}@s.whatsapp.net`)
+        if (num) await kickUser(remoteJid, ${num}@s.whatsapp.net)
         return
       }
 
+      // ===== فلترة تلقائية (استثناء المشرفين) =====
       const senderIsAdmin = await isAdmin(sock, remoteJid, fromJid).catch(()=>false)
       if (!senderIsAdmin && text) {
         let reason = ''
@@ -215,11 +238,11 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
         else if (hasInsult(text)) reason = 'ألفاظ مسيئة'
 
         if (reason) {
-          await deleteForEveryone(m)
-          await warnUser(remoteJid, fromJid, reason)
+          await deleteForEveryone(m) // حذف الرسالة للجميع إن أمكن
+          await warnUser(remoteJid, fromJid, reason) // تحذير
 
           const count = addInfraction(remoteJid, fromJid)
-          if (count >= 2) {
+          if (count >= 2) { // عتبة الطرد
             await kickUser(remoteJid, fromJid)
             await sock.sendMessage(remoteJid, { text: 'تم الطرد لتكرار المخالفة.' })
           }
@@ -227,6 +250,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
         }
       }
     } else {
+      // الخاص
       if ((text || '').toLowerCase() === 'ping') {
         await sock.sendMessage(remoteJid, { text: 'pong ✅' })
       } else if (isArabic(text)) {
@@ -237,6 +261,7 @@ export async function startBot({ n8nWebhookUrl, n8nSecret, botOwner }) {
     }
   })
 
+  // حفظ دوري للـauth في Redis
   ;(async function periodicSnapshot(){
     while (true) {
       await sleep(60_000)
