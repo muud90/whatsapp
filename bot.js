@@ -1,15 +1,19 @@
-// === بداية bot.js (الصحيحة) ===
-import makeWASocket, {
-  useMultiFileAuthState,
-  jidNormalizedUser,
-  fetchLatestBaileysVersion
-} from '@whiskeysockets/baileys'
+// === بداية bot.js (استيراد Baileys بطريقة دفاعية) ===
+import * as Baileys from '@whiskeysockets/baileys'
+// نلتقط الدالة سواء كانت default أو مسماة
+const makeWASocket = Baileys.default ?? Baileys.makeWASocket
+const { useMultiFileAuthState, jidNormalizedUser, fetchLatestBaileysVersion } = Baileys
+
+// تحقّق صريح — لو كان في مشكلة سنشوفها بوضوح في اللوج
+if (typeof makeWASocket !== 'function') {
+  console.error('[Baileys] makeWASocket نوعه:', typeof makeWASocket, '— محتوى Baileys.keys:', Object.keys(Baileys))
+  throw new TypeError('makeWASocket not resolved to a function')
+}
 
 import axios from 'axios'
 import fs from 'fs'
 import path from 'path'
 import { Redis } from '@upstash/redis'
-
 // ===== إعداد التخزين في Redis لملفات الجلسة =====
 const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
   ? new Redis({
