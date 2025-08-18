@@ -26,6 +26,7 @@ const NS = process.env.REDIS_NAMESPACE || 'wauth:default'
 const authDir = path.join(process.cwd(), 'auth')
 if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true })
 
+// احفظ ملفات الجلسة في Redis
 async function saveAuthToRedis() {
   if (!redis) return
   const files = fs.readdirSync(authDir)
@@ -37,11 +38,12 @@ async function saveAuthToRedis() {
   }
 }
 
+// استرجع ملفات الجلسة من Redis
 async function loadAuthFromRedis() {
   if (!redis) return
   try {
     const files = await redis.get(${NS}:files)
-    if (!files || !Array.isArray(files) || !files.length) return
+    if (!Array.isArray(files) || !files.length) return
     for (const f of files) {
       const b64 = await redis.get(${NS}:file:${f})
       if (!b64) continue
