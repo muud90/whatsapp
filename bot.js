@@ -25,12 +25,12 @@ const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_RE
 const NS = process.env.REDIS_NAMESPACE || 'wauth:default'
 const authDir = path.join(process.cwd(), 'auth')
 if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true })
-
 // احفظ ملفات الجلسة في Redis
 async function saveAuthToRedis() {
   if (!redis) return
   const files = fs.readdirSync(authDir)
-  await redis.set(`${NS}:files`, files)
+  // خزّن قائمة الأسماء كسلسلة JSON
+  await redis.set(`${NS}:files`, JSON.stringify(files))
   for (const f of files) {
     const full = path.join(authDir, f)
     const buf = fs.readFileSync(full)
@@ -42,10 +42,14 @@ async function saveAuthToRedis() {
 async function loadAuthFromRedis() {
   if (!redis) return
   try {
-    const files = await redis.get(${NS}:files)
+    // لاحظ الـ backticks هنا 👇
+    const filesJson = await redis.get(`${NS}:files`)
+    const files = Array.isArray(filesJson) ? filesJson : JSON.parse(filesJson || '[]')
     if (!Array.isArray(files) || !files.length) return
+
     for (const f of files) {
-      const b64 = await redis.get(${NS}:file:${f})
+      // ولا تنسَ backticks هنا أيضًا 👇
+      const b64 = await redis.get(`${NS}:file:${f}`)
       if (!b64) continue
       const full = path.join(authDir, f)
       fs.writeFileSync(full, Buffer.from(b64, 'base64'))
@@ -55,6 +59,7 @@ async function loadAuthFromRedis() {
     console.warn('[Auth] Redis restore skipped:', e.message)
   }
 }
+
 // عند بدء التشغيل: حاول استعادة الجلسة
 await loadAuthFromRedis()
 
