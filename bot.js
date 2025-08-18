@@ -30,11 +30,11 @@ if (!fs.existsSync(authDir)) fs.mkdirSync(authDir, { recursive: true })
 async function saveAuthToRedis() {
   if (!redis) return
   const files = fs.readdirSync(authDir)
-  await redis.set(${NS}:files, files)
+  await redis.set(`${NS}:files`, files)
   for (const f of files) {
     const full = path.join(authDir, f)
     const buf = fs.readFileSync(full)
-    await redis.set(${NS}:file:${f}, buf.toString('base64'))
+    await redis.set(`${NS}:file:${f}`, buf.toString('base64'))
   }
 }
 
