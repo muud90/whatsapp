@@ -15,7 +15,7 @@ export const startBot = async () => {
         version: (await fetchLatestBaileysVersion()).version,
         auth: state,
         printQRInTerminal: false, // Important: Disable QR code printing
-        browser: Browsers.macOS('Desktop'),
+        browser: ['My-WhatsApp-Bot', 'Chrome', '110.0.0'],
         logger: pino({ level: 'silent' }),
     });
 
